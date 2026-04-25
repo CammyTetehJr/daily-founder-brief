@@ -187,16 +187,27 @@ function EventLine({ event }: { event: PipelineEvent }) {
         </div>
       );
 
-    case "voice_generated":
+    case "voice_generated": {
+      const filename = event.path.split("/").pop() ?? "";
       return (
-        <div className="py-0.5 pl-6 text-[color:var(--color-text-muted)]">
-          {Math.round(event.bytes / 1024)} KB · ~{event.duration_s.toFixed(1)}s
-          ·{" "}
-          <span className="text-[color:var(--color-text-dim)]">
-            {event.path.replace(/^.+\/data\//, "data/")}
-          </span>
+        <div className="py-2 pl-6 flex flex-col gap-1.5">
+          <div className="text-[color:var(--color-text-muted)]">
+            {Math.round(event.bytes / 1024)} KB · ~
+            {event.duration_s.toFixed(1)}s
+            ·{" "}
+            <span className="text-[color:var(--color-text-dim)]">
+              data/audio/{filename}
+            </span>
+          </div>
+          <audio
+            controls
+            preload="metadata"
+            src={`/api/audio/${encodeURIComponent(filename)}`}
+            className="w-full max-w-md h-8 rounded-sm border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-elevated)]"
+          />
         </div>
       );
+    }
 
     case "sending":
       return (
