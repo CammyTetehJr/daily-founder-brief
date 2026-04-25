@@ -8,6 +8,19 @@ type PipelineEvent =
   | { type: "tool_call"; name: string; input: Record<string, unknown> }
   | { type: "tool_result"; name: string; ok: boolean; summary: string }
   | {
+      type: "mcp_tool_call";
+      server: string;
+      name: string;
+      input: Record<string, unknown>;
+    }
+  | {
+      type: "mcp_tool_result";
+      server: string;
+      name: string;
+      ok: boolean;
+      summary: string;
+    }
+  | {
       type: "signal_recorded";
       competitor: string;
       signal_type: string;
@@ -83,6 +96,37 @@ function EventLine({ event }: { event: PipelineEvent }) {
             {event.ok ? "ok" : "fail"}
           </span>
           <span className="text-[color:var(--color-text-muted)]">{event.summary}</span>
+        </div>
+      );
+
+    case "mcp_tool_call":
+      return (
+        <div className="flex gap-3 py-0.5 items-baseline">
+          <span className="text-[color:var(--color-info)] shrink-0">»</span>
+          <span className="text-[color:var(--color-text)] shrink-0">
+            {event.server}.{event.name}
+          </span>
+          <span className="text-[color:var(--color-text-dim)] truncate">
+            {truncate(JSON.stringify(event.input), 140)}
+          </span>
+        </div>
+      );
+
+    case "mcp_tool_result":
+      return (
+        <div className="flex gap-3 py-0.5 pl-6">
+          <span
+            className={
+              event.ok
+                ? "text-[color:var(--color-ok)] shrink-0"
+                : "text-[color:var(--color-err)] shrink-0"
+            }
+          >
+            {event.ok ? "ok" : "fail"}
+          </span>
+          <span className="text-[color:var(--color-text-muted)] truncate">
+            {truncate(event.summary, 200)}
+          </span>
         </div>
       );
 

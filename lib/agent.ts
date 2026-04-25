@@ -6,11 +6,39 @@ import { scrapeAndStore, searchNews } from "./tavily";
 
 const MODEL = process.env.AGENT_MODEL ?? "claude-opus-4-7";
 
+const PEEC_MCP_URL = "https://api.peec.ai/mcp";
+const PEEC_ALLOWED_TOOLS = [
+  "list_projects",
+  "list_brands",
+  "list_prompts",
+  "list_chats",
+  "get_chat",
+  "get_brand_report",
+  "get_actions",
+];
+
+function peecEnabled() {
+  return Boolean(process.env.PEEC_MCP_TOKEN);
+}
+
 export type AgentEvent =
   | { type: "status"; text: string }
   | { type: "thinking"; text: string }
   | { type: "tool_call"; name: string; input: Record<string, unknown> }
   | { type: "tool_result"; name: string; ok: boolean; summary: string }
+  | {
+      type: "mcp_tool_call";
+      server: string;
+      name: string;
+      input: Record<string, unknown>;
+    }
+  | {
+      type: "mcp_tool_result";
+      server: string;
+      name: string;
+      ok: boolean;
+      summary: string;
+    }
   | {
       type: "signal_recorded";
       competitor: string;
@@ -127,6 +155,23 @@ Hard rules:
 - Every signal must cite a scrape_id or source_url. No signals without receipts.
 - If no real changes were found for a competitor, just move on. Reporting nothing is better than fabricating.
 - Keep summaries one sentence, specific, and actionable.`;
+
+const PEEC_PROMPT_ADDITION = `
+
+You also have access to Peec AI MCP tools for tracking how brands appear in AI search engines (ChatGPT, Claude, Perplexity, Gemini). These complement scrape diffs and news searches by adding a third signal type: share-of-voice and visibility shifts in LLM answers.
+
+Peec AI workflow:
+1. Call list_projects to confirm the active project, then list_brands to see which competitors are tracked there.
+2. For each tracked competitor brand, call get_brand_report to retrieve current visibility, sentiment, position, and share of voice across AI search engines.
+3. If a brand's metrics show meaningful change (e.g., share of voice up significantly, sentiment shift, new position trends), record_signal with signal_type "messaging" or "feature" using a source_url that points to the relevant Peec AI dashboard or report. Treat the Peec data itself as the receipt.
+4. Skip Peec AI for any competitor not present in list_brands (do not invent brand IDs).
+5. Use get_actions only if a competitor's brand report surfaces opportunities that translate into a founder action.
+
+Treat Peec AI as supplementary intelligence, not a replacement for scrape diffs and news.`;
+
+function buildSystemPrompt() {
+  return peecEnabled() ? SYSTEM_PROMPT + PEEC_PROMPT_ADDITION : SYSTEM_PROMPT;
+}
 
 type ToolOutcome =
   | { ok: true; content: string }
@@ -282,7 +327,7 @@ export async function* runAgent(
     .all(userId) as Array<{ name: string }>;
   yield { type: "status", text: `Starting run for ${competitors.length} competitors` };
 
-  const messages: Anthropic.MessageParam[] = [
+  const messages: Anthropic.Beta.BetaMessageParam[] = [
     {
       role: "user",
       content:
@@ -291,17 +336,43 @@ export async function* runAgent(
     },
   ];
 
+  const usePeec = peecEnabled();
+  const mcpServers: Anthropic.Beta.BetaRequestMCPServerURLDefinition[] = usePeec
+    ? [
+        {
+          name: "peec",
+          type: "url",
+          url: PEEC_MCP_URL,
+          authorization_token: process.env.PEEC_MCP_TOKEN!,
+          tool_configuration: {
+            allowed_tools: PEEC_ALLOWED_TOOLS,
+            enabled: true,
+          },
+        },
+      ]
+    : [];
+
+  if (usePeec) {
+    yield { type: "status", text: "Peec AI MCP enabled" };
+  }
+
   let signalCount = 0;
   const maxTurns = 40;
 
   try {
     for (let turn = 0; turn < maxTurns; turn++) {
-      const response = await client.messages.create({
+      const response = await client.beta.messages.create({
         model: MODEL,
         max_tokens: 4096,
-        system: SYSTEM_PROMPT,
+        system: buildSystemPrompt(),
         tools,
         messages,
+        ...(usePeec
+          ? {
+              mcp_servers: mcpServers,
+              betas: ["mcp-client-2025-11-20"],
+            }
+          : {}),
       });
 
       messages.push({ role: "assistant", content: response.content });
@@ -316,6 +387,30 @@ export async function* runAgent(
             name: block.name,
             input: block.input as Record<string, any>,
           });
+        } else if (block.type === "mcp_tool_use") {
+          yield {
+            type: "mcp_tool_call",
+            server: block.server_name,
+            name: block.name,
+            input: (block.input ?? {}) as Record<string, unknown>,
+          };
+        } else if (block.type === "mcp_tool_result") {
+          const summary =
+            typeof block.content === "string"
+              ? block.content.slice(0, 240)
+              : Array.isArray(block.content)
+                ? block.content
+                    .map((b) => (b.type === "text" ? b.text : ""))
+                    .join("")
+                    .slice(0, 240)
+                : "";
+          yield {
+            type: "mcp_tool_result",
+            server: "peec",
+            name: "(mcp)",
+            ok: !block.is_error,
+            summary: summary || (block.is_error ? "error" : "ok"),
+          };
         }
       }
 
@@ -323,7 +418,7 @@ export async function* runAgent(
         break;
       }
 
-      const toolResults: Anthropic.ToolResultBlockParam[] = [];
+      const toolResults: Anthropic.Beta.BetaToolResultBlockParam[] = [];
       for (const use of toolUses) {
         yield { type: "tool_call", name: use.name, input: use.input };
         const outcome = await executeTool(use.name, use.input, userId, emit);

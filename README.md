@@ -11,7 +11,8 @@ Built for Big Berlin Hack 2026.
 - **Next.js 16** (App Router, Turbopack) for the live agent terminal at `/`
 - **SQLite** (`better-sqlite3`) for users, competitors, scrapes, signals, briefs
 - **Tavily** for live scrape (`/extract`) and news search (`/search`)
-- **Claude** (Opus 4.7 agent loop, Sonnet 4.6 brief composer) via `@anthropic-ai/sdk`
+- **Claude** (Opus 4.7 agent loop, Sonnet 4.6 brief composer) via `@anthropic-ai/sdk`, with the Anthropic MCP connector as the integration surface for sponsor MCPs
+- **Peec AI MCP** (when `PEEC_MCP_TOKEN` is set) for share-of-voice and brand-visibility tracking across AI search engines
 - **React Email + Resend** for the brief itself
 
 ## Setup
@@ -33,6 +34,7 @@ Required env vars:
 | `RESEND_API_KEY` | Brief delivery |
 | `FROM_EMAIL` | Sender address (must be on a Resend-verified domain) |
 | `SEED_USER_EMAIL` | Email seeded as the demo user (where briefs get sent) |
+| `PEEC_MCP_TOKEN` | Optional. Bearer token for the Peec AI MCP server (https://api.peec.ai/mcp). When set, the agent gets brand-visibility tools alongside scrape/diff/news. |
 
 ## Architecture
 
