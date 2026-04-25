@@ -1,7 +1,8 @@
 import { writeFileSync, mkdirSync, existsSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import type { ComposedBrief } from "./compose";
+import { safePathSegment } from "./path-safety";
 
 const TTS_ENDPOINT = "https://api.gradium.ai/api/post/speech/tts";
 const DEFAULT_VOICE_ID = process.env.GRADIUM_VOICE_ID ?? "YTpq7expH9539ERJ";
@@ -81,9 +82,13 @@ export async function generateVoiceBrief(params: {
 
   const audioBuffer = Buffer.from(await res.arrayBuffer());
 
-  const dir = join(process.cwd(), "data", "audio");
+  const safeBriefId = safePathSegment(params.briefId, "briefId");
+  const dir = resolve(process.cwd(), "data", "audio");
+  const path = resolve(dir, `${safeBriefId}.wav`);
+  if (!path.startsWith(dir + "/")) {
+    throw new Error("resolved audio path escaped data/audio");
+  }
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  const path = join(dir, `${params.briefId}.wav`);
   writeFileSync(path, audioBuffer);
 
   // Rough duration estimate: ~16 chars per second of natural speech.

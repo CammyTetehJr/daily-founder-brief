@@ -1,6 +1,8 @@
 import { chromium, type Browser } from "playwright";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
+
+import { safePathSegment } from "./path-safety";
 
 const DEFAULT_VIEWPORT = { width: 1440, height: 1024 };
 // Cap full-page captures so a marketing page with infinite scroll
@@ -91,16 +93,19 @@ export async function takeScreenshot(params: {
       });
     }
 
-    const dir = join(
-      process.cwd(),
-      "data",
-      "screenshots",
-      params.competitorId,
-      params.sourceType,
-    );
+    const safeCompetitorId = safePathSegment(params.competitorId, "competitorId");
+    const safeSourceType = safePathSegment(params.sourceType, "sourceType");
+    const root = resolve(process.cwd(), "data", "screenshots");
+    const dir = resolve(root, safeCompetitorId, safeSourceType);
+    if (!dir.startsWith(root + "/") && dir !== root) {
+      throw new Error("resolved screenshot directory escaped data/screenshots");
+    }
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-    const ts = new Date().toISOString().replace(/[:.]/g, "-");
-    const path = join(dir, `${ts}.png`);
+    const tsName = safePathSegment(
+      new Date().toISOString().replace(/[:.]/g, "-"),
+      "timestamp",
+    );
+    const path = join(dir, `${tsName}.png`);
     writeFileSync(path, finalBuffer);
 
     return {
