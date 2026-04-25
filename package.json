@@ -12,7 +12,8 @@
     "test:brief": "tsx --env-file=.env.local scripts/test-brief.ts",
     "seed:wayback": "tsx --env-file=.env.local scripts/seed-wayback.ts",
     "verify:diff": "tsx --env-file=.env.local scripts/verify-baseline-diff.ts",
-    "test:visual": "tsx --env-file=.env.local scripts/test-visual.ts"
+    "test:visual": "tsx --env-file=.env.local scripts/test-visual.ts",
+    "test:voice": "tsx --env-file=.env.local scripts/test-voice.ts"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.114",

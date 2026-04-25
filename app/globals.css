@@ -1,22 +1,24 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #0a0a0a;
-  --surface: #121212;
-  --border: #232323;
-  --border-strong: #333333;
-  --text: #f5f5f5;
-  --text-muted: #9a9a9a;
-  --text-dim: #6a6a6a;
-  --green: #7bb574;
-  --yellow: #d4a14a;
-  --red: #e06b6b;
-  --cyan: #6aa8d4;
+  --bg: #050505;
+  --surface: #0c0c0c;
+  --surface-elevated: #111111;
+  --border: #181818;
+  --border-strong: #262626;
+  --text: #f2f2f2;
+  --text-muted: #8e8e8e;
+  --text-dim: #555555;
+  --green: #6ea867;
+  --yellow: #c79a44;
+  --red: #c46b6b;
+  --cyan: #5f9bc1;
 }
 
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
   --color-text: var(--text);
@@ -35,6 +37,32 @@ body {
   color: var(--text);
   font-family: var(--font-geist-mono), "SF Mono", Menlo, Consolas, monospace;
   font-variant-ligatures: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Subtle radial vignette adds depth without feeling gimmicky. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse at 50% -10%,
+      rgba(255, 255, 255, 0.02) 0%,
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse at 50% 110%,
+      rgba(0, 0, 0, 0.4) 0%,
+      transparent 60%
+    );
+  z-index: 0;
+}
+
+main {
+  position: relative;
+  z-index: 1;
 }
 
 ::selection {
@@ -51,4 +79,22 @@ body {
 .scroll-thin::-webkit-scrollbar-thumb {
   background: var(--border-strong);
   border-radius: 3px;
+}
+.scroll-thin::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}
+
+/* Pulsing status dot for running state. */
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(199, 154, 68, 0.5);
+  }
+  50% {
+    opacity: 0.6;
+    box-shadow: 0 0 0 4px rgba(199, 154, 68, 0);
+  }
+}
+.dot-pulse {
+  animation: pulse-dot 1.6s ease-in-out infinite;
 }

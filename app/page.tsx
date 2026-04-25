@@ -336,12 +336,22 @@ export default function Home() {
     error: "error",
   };
 
+  const statusDotColor: Record<Status, string> = {
+    idle: "var(--color-text-dim)",
+    running: "var(--color-warn)",
+    done: "var(--color-ok)",
+    error: "var(--color-err)",
+  };
+
   return (
     <main className="flex flex-col flex-1 w-full max-w-5xl mx-auto px-6 py-8 gap-4">
       <header className="flex items-center justify-between border-b border-[color:var(--color-border)] pb-4">
         <div className="flex items-baseline gap-3">
-          <span className="text-[color:var(--color-text-dim)] text-xs uppercase tracking-[0.12em]">
-            // daily founder brief
+          <span className="text-[color:var(--color-text)] text-xs uppercase tracking-[0.18em]">
+            DAILY FOUNDER BRIEF
+          </span>
+          <span className="text-[color:var(--color-text-dim)] text-[10px] tracking-widest uppercase">
+            v0.1
           </span>
           <span className="text-[color:var(--color-text-dim)] text-xs">
             {dateStr}
@@ -369,9 +379,9 @@ export default function Home() {
           ) : (
             <button
               onClick={start}
-              className="border border-[color:var(--color-text-dim)] px-3 py-1 text-xs text-[color:var(--color-text)] hover:border-[color:var(--color-text)] transition-colors"
+              className="relative border border-[color:var(--color-border-strong)] bg-[color:var(--color-surface-elevated)] px-4 py-1.5 text-xs text-[color:var(--color-text)] hover:border-[color:var(--color-text-dim)] hover:bg-[#161616] transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
             >
-              run <span className="text-[color:var(--color-text-dim)]">[r]</span>
+              run <span className="text-[color:var(--color-text-dim)] ml-1">[r]</span>
             </button>
           )}
         </div>
@@ -379,10 +389,15 @@ export default function Home() {
 
       <div
         ref={scrollRef}
-        className="scroll-thin flex-1 min-h-[520px] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4 overflow-y-auto text-xs leading-relaxed"
+        className="scroll-thin flex-1 min-h-[520px] border border-[color:var(--color-border)] bg-[color:var(--color-surface)] p-4 overflow-y-auto text-xs leading-relaxed shadow-[inset_0_1px_0_rgba(255,255,255,0.02),0_8px_24px_rgba(0,0,0,0.4)]"
       >
         {events.length === 0 ? (
-          <div className="text-[color:var(--color-text-dim)]">
+          <div className="text-[color:var(--color-text-dim)] flex items-center gap-2">
+            <span
+              aria-hidden
+              style={{ background: statusDotColor[status] }}
+              className="inline-block w-1.5 h-1.5 rounded-full"
+            />
             {status === "running"
               ? "waiting for first event…"
               : "press [r] or click run to begin investigation."}
@@ -394,7 +409,14 @@ export default function Home() {
 
       <footer className="flex items-center justify-between border-t border-[color:var(--color-border)] pt-3 text-[11px] text-[color:var(--color-text-dim)]">
         <div className="flex items-center gap-3">
-          <span>
+          <span className="flex items-center gap-2">
+            <span
+              aria-hidden
+              style={{ background: statusDotColor[status] }}
+              className={`inline-block w-1.5 h-1.5 rounded-full ${
+                status === "running" ? "dot-pulse" : ""
+              }`}
+            />
             <span
               className={
                 status === "running"
@@ -416,7 +438,15 @@ export default function Home() {
           <span>·</span>
           <span>{formatElapsed(elapsed)}</span>
         </div>
-        <div>toneswap</div>
+        <div className="flex items-center gap-3">
+          <span className="text-[color:var(--color-text-dim)]">tavily</span>
+          <span className="text-[color:var(--color-text-dim)]">/</span>
+          <span className="text-[color:var(--color-text-dim)]">gemini</span>
+          <span className="text-[color:var(--color-text-dim)]">/</span>
+          <span className="text-[color:var(--color-text-dim)]">gradium</span>
+          <span className="text-[color:var(--color-border-strong)] mx-1">|</span>
+          <span>toneswap</span>
+        </div>
       </footer>
     </main>
   );

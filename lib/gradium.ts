@@ -86,8 +86,8 @@ export async function generateVoiceBrief(params: {
   const path = join(dir, `${params.briefId}.wav`);
   writeFileSync(path, audioBuffer);
 
-  // Rough duration estimate: text length / ~165 chars per second of speech.
-  const approxSeconds = Math.round(text.length / 16.5) / 10;
+  // Rough duration estimate: ~16 chars per second of natural speech.
+  const approxSeconds = Math.round((text.length / 16) * 10) / 10;
 
   return {
     path,
