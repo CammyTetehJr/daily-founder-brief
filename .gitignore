@@ -41,6 +41,9 @@ yarn-error.log*
 /.entire/
 /.claude/
 
+# Auto-generated dispatch log (regenerate locally with `npm run dispatch`)
+/docs/build-log.md
+
 # vercel
 .vercel
 
