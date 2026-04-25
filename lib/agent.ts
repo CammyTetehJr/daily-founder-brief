@@ -2,7 +2,24 @@ import Anthropic from "@anthropic-ai/sdk";
 import { randomUUID } from "node:crypto";
 import { getDb, type Competitor } from "./db";
 import { diffLatestTwo } from "./diff";
+import { analyzeScreenshot } from "./gemini";
+import { takeScreenshot } from "./screenshot";
 import { scrapeAndStore, searchNews } from "./tavily";
+
+const VISUAL_PROMPT = `You are inspecting a screenshot of a competitor's web page for a competitive intelligence brief.
+
+Extract a tight, factual readout. Use this exact structure:
+
+PAGE TYPE: <one of: pricing | careers | homepage | other>
+HEADLINE: <verbatim hero / H1 text, with quotes>
+SUBHEAD: <verbatim subheadline if present, else "none">
+PRICING TIERS: <if visible: list each tier as "TIER_NAME — price/period — top 2-3 features". If not visible: "none on this view".>
+PROMINENT CTAS: <list of button/link copy that's most visually emphasized, max 3>
+ANNOUNCEMENTS / BANNERS: <any time-limited banners, launch callouts, "new" badges; else "none">
+NOTABLE VISUAL ELEMENTS: <one sentence on layout, color emphasis, hero imagery>
+SHIPPED FEATURES MENTIONED: <bullet list of named product features if any>
+
+Be ruthless about accuracy. If something isn't visible in the image, say so. Do not invent prices, tier names, or features.`;
 
 const MODEL = process.env.AGENT_MODEL ?? "claude-opus-4-7";
 
@@ -107,6 +124,23 @@ const tools: Anthropic.Tool[] = [
     },
   },
   {
+    name: "visual_check",
+    description:
+      "Capture a fresh screenshot of a competitor URL with a headless Chromium browser, then ask Gemini 2.x (multimodal) to extract a structured readout: pricing tiers, hero text, prominent CTAs, banners, named features. Use this when scrape diffs or news leave gaps - especially to verify visible pricing or to surface launch banners that text scraping might miss. The result is a Gemini analysis you can use to inform record_signal calls (cite the saved screenshot path as the source_url).",
+    input_schema: {
+      type: "object",
+      properties: {
+        competitor_id: { type: "string" },
+        source_type: {
+          type: "string",
+          enum: ["homepage", "pricing", "careers"],
+        },
+        url: { type: "string" },
+      },
+      required: ["competitor_id", "source_type", "url"],
+    },
+  },
+  {
     name: "record_signal",
     description:
       "Record a meaningful competitive signal. Provide before_scrape_id + after_scrape_id for diff-based signals (pricing, hiring, feature, messaging) OR source_url for news-based signals. Every signal must cite a receipt.",
@@ -149,7 +183,8 @@ Method:
 1. Call list_competitors first.
 2. For each competitor: pick the most informative page (usually pricing_page), call scrape_page, then diff_latest on that source_type. If diff shows real change, record_signal citing before_scrape_id + after_scrape_id. Ignore cosmetic/whitespace noise.
 3. Run search_news for any competitor you suspect has news worth flagging (launches, funding). Record those with source_url.
-4. When every competitor has been investigated, STOP. Do not loop.
+4. When a scrape diff hints at pricing or messaging change but text alone is ambiguous (e.g. lots of marketing copy noise), call visual_check on that page. Gemini's structured readout will confirm or deny what changed visibly. Use the saved screenshot path as source_url when you record the resulting signal.
+5. When every competitor has been investigated, STOP. Do not loop.
 
 Hard rules:
 - Every signal must cite a scrape_id or source_url. No signals without receipts.
@@ -256,6 +291,27 @@ async function executeTool(
       };
     }
 
+    if (name === "visual_check") {
+      const shot = await takeScreenshot({
+        url: input.url,
+        competitorId: input.competitor_id,
+        sourceType: input.source_type,
+      });
+      const analysis = await analyzeScreenshot({
+        imageBuffer: shot.buffer,
+        prompt: VISUAL_PROMPT,
+      });
+      return {
+        ok: true,
+        content: JSON.stringify({
+          screenshot_path: shot.path,
+          screenshot_bytes: shot.bytes,
+          viewport: shot.viewport,
+          analysis,
+        }),
+      };
+    }
+
     if (name === "record_signal") {
       const competitor = getDb()
         .prepare(`SELECT name FROM competitors WHERE id = ?`)
@@ -307,6 +363,8 @@ function summarizeToolResult(name: string, content: string): string {
       return `+${parsed.added_count ?? 0} / -${parsed.removed_count ?? 0}`;
     }
     if (name === "search_news") return `${parsed.results?.length ?? 0} results`;
+    if (name === "visual_check")
+      return `${Math.round((parsed.screenshot_bytes ?? 0) / 1024)}KB, ${(parsed.analysis ?? "").length} chars`;
     if (name === "record_signal") return `stored ${parsed.signal_id?.slice(0, 8) ?? ""}`;
   } catch {}
   return "ok";
@@ -344,13 +402,18 @@ export async function* runAgent(
           type: "url",
           url: PEEC_MCP_URL,
           authorization_token: process.env.PEEC_MCP_TOKEN!,
-          tool_configuration: {
-            allowed_tools: PEEC_ALLOWED_TOOLS,
-            enabled: true,
-          },
         },
       ]
     : [];
+
+  const peecToolset: Anthropic.Beta.BetaMCPToolset = {
+    type: "mcp_toolset",
+    mcp_server_name: "peec",
+    default_config: { enabled: false },
+    configs: Object.fromEntries(
+      PEEC_ALLOWED_TOOLS.map((name) => [name, { enabled: true }]),
+    ),
+  };
 
   if (usePeec) {
     yield { type: "status", text: "Peec AI MCP enabled" };
@@ -361,11 +424,18 @@ export async function* runAgent(
 
   try {
     for (let turn = 0; turn < maxTurns; turn++) {
+      const requestTools: Array<
+        Anthropic.Beta.BetaTool | Anthropic.Beta.BetaMCPToolset
+      > = [...tools];
+      if (usePeec) {
+        requestTools.push(peecToolset);
+      }
+
       const response = await client.beta.messages.create({
         model: MODEL,
         max_tokens: 4096,
         system: buildSystemPrompt(),
-        tools,
+        tools: requestTools,
         messages,
         ...(usePeec
           ? {

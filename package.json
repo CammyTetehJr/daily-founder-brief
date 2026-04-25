@@ -16,11 +16,13 @@
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.2.114",
     "@anthropic-ai/sdk": "^0.90.0",
+    "@google/genai": "^1.50.1",
     "@react-email/components": "^1.0.12",
     "@tavily/core": "^0.7.2",
     "better-sqlite3": "^12.9.0",
     "diff": "^9.0.0",
     "next": "16.2.4",
+    "playwright": "^1.59.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "resend": "^6.12.0"
