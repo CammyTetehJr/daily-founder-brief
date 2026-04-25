@@ -182,8 +182,8 @@ Your job: investigate tracked competitors and record any meaningful changes sinc
 Method:
 1. Call list_competitors first.
 2. For each competitor: pick the most informative page (usually pricing_page), call scrape_page, then diff_latest on that source_type. If diff shows real change, record_signal citing before_scrape_id + after_scrape_id. Ignore cosmetic/whitespace noise.
-3. Run search_news for any competitor you suspect has news worth flagging (launches, funding). Record those with source_url.
-4. When a scrape diff hints at pricing or messaging change but text alone is ambiguous (e.g. lots of marketing copy noise), call visual_check on that page. Gemini's structured readout will confirm or deny what changed visibly. Use the saved screenshot path as source_url when you record the resulting signal.
+3. Always run visual_check on each competitor's pricing_page. Gemini's structured readout (page type, headline, pricing tiers with prices, CTAs, banners, named features) catches what text scraping misses: visible pricing changes, new tier launches, banners, messaging emphasis. If the readout reveals something not in your scrape diff (e.g. a new tier, a price change, a launch banner), record_signal citing the saved screenshot path as source_url.
+4. Run search_news for any competitor you suspect has news worth flagging (launches, funding). Record those with source_url.
 5. When every competitor has been investigated, STOP. Do not loop.
 
 Hard rules:

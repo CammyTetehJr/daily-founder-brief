@@ -2,16 +2,25 @@ import { chromium, type Browser } from "playwright";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-const DEFAULT_VIEWPORT = { width: 1280, height: 900 };
+const DEFAULT_VIEWPORT = { width: 1440, height: 1024 };
+// Cap full-page captures so a marketing page with infinite scroll
+// or huge footers doesn't generate a 30MB PNG.
+const MAX_FULL_PAGE_HEIGHT = 4500;
 const COOKIE_DISMISS_SELECTORS = [
+  'button:has-text("Accept all cookies")',
   'button:has-text("Accept all")',
   'button:has-text("Accept All")',
   'button:has-text("Accept")',
+  'button:has-text("I accept")',
   'button:has-text("I agree")',
   'button:has-text("Allow all")',
+  'button:has-text("Allow")',
   'button:has-text("Got it")',
-  '[id*="cookie"] button:has-text("Accept")',
-  '[class*="cookie"] button:has-text("Accept")',
+  'button:has-text("OK")',
+  '[aria-label*="accept" i]',
+  '[id*="onetrust-accept"]',
+  '[id*="cookie"] button',
+  '[class*="cookie"] button',
 ];
 
 export type ScreenshotResult = {
@@ -44,7 +53,7 @@ export async function takeScreenshot(params: {
         const btn = page.locator(selector).first();
         if (await btn.isVisible({ timeout: 250 })) {
           await btn.click({ timeout: 1_000 });
-          await page.waitForTimeout(400);
+          await page.waitForTimeout(600);
           break;
         }
       } catch {
@@ -52,7 +61,31 @@ export async function takeScreenshot(params: {
       }
     }
 
-    const buffer = await page.screenshot({ fullPage: false, type: "png" });
+    // Scroll to top in case the page anchored to a deep section.
+    await page
+      .evaluate(() => window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }))
+      .catch(() => {});
+    await page.waitForTimeout(300);
+
+    const buffer = await page.screenshot({
+      fullPage: true,
+      type: "png",
+      clip: undefined,
+    });
+
+    // If the full-page screenshot exceeds our cap, recapture clipped to the cap height.
+    let finalBuffer = buffer;
+    if (buffer.length > 4_000_000) {
+      finalBuffer = await page.screenshot({
+        type: "png",
+        clip: {
+          x: 0,
+          y: 0,
+          width: DEFAULT_VIEWPORT.width,
+          height: MAX_FULL_PAGE_HEIGHT,
+        },
+      });
+    }
 
     const dir = join(
       process.cwd(),
@@ -64,12 +97,12 @@ export async function takeScreenshot(params: {
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     const ts = new Date().toISOString().replace(/[:.]/g, "-");
     const path = join(dir, `${ts}.png`);
-    writeFileSync(path, buffer);
+    writeFileSync(path, finalBuffer);
 
     return {
       path,
-      buffer,
-      bytes: buffer.length,
+      buffer: finalBuffer,
+      bytes: finalBuffer.length,
       viewport: `${DEFAULT_VIEWPORT.width}x${DEFAULT_VIEWPORT.height}`,
     };
   } finally {
