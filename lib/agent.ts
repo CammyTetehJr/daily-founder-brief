@@ -22,7 +22,9 @@ SHIPPED FEATURES MENTIONED: <bullet list of named product features if any>
 
 Be ruthless about accuracy. If something isn't visible in the image, say so. Do not invent prices, tier names, or features.`;
 
-const MODEL = process.env.AGENT_MODEL ?? "claude-opus-4-7";
+// Default to Sonnet for hackathon demo speed (each turn ~2-3x faster than Opus).
+// Override via AGENT_MODEL=claude-opus-4-7 for production-quality reasoning.
+const MODEL = process.env.AGENT_MODEL ?? "claude-sonnet-4-6";
 
 const PEEC_MCP_URL = "https://api.peec.ai/mcp";
 const PEEC_ALLOWED_TOOLS = [

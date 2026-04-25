@@ -44,9 +44,13 @@ export async function takeScreenshot(params: {
     });
     const page = await context.newPage();
     await page.goto(params.url, {
-      waitUntil: "networkidle",
-      timeout: 30_000,
+      waitUntil: "domcontentloaded",
+      timeout: 20_000,
     });
+    // Brief settle so above-the-fold content paints / fonts swap in.
+    // We no longer wait for networkidle because tracking pixels and
+    // analytics keep marketing pages from ever fully going idle.
+    await page.waitForTimeout(1_500);
 
     for (const selector of COOKIE_DISMISS_SELECTORS) {
       try {
