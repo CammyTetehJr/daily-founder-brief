@@ -14,12 +14,13 @@ export type VoiceBriefResult = {
   durationApproxSeconds: number;
 };
 
-// Gradium TTS hard limit is 3000 chars per call. Keep the audio script
-// well under that by capping signal count and length, plus a final
-// guard that truncates at sentence boundary if a long input slips through.
-const VOICE_MAX_CHARS = 2700;
-const VOICE_MAX_SIGNALS = 3;
-const VOICE_MAX_ACTIONS = 3;
+// Gradium TTS docs say 3000 chars max but in practice the default
+// voice silently drops audio when the script is much over ~1500.
+// We cap aggressively and trim signal/action counts to fit a tight
+// 60-90s morning read.
+const VOICE_MAX_CHARS = 1500;
+const VOICE_MAX_SIGNALS = 2;
+const VOICE_MAX_ACTIONS = 2;
 // A real WAV file for ~60s of speech is ~5MB. A response that's just
 // the 44-byte header (or close to it) means Gradium failed to generate
 // audio even if it returned a 200 status with audio/wav content-type.
