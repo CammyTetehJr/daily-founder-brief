@@ -38,6 +38,13 @@ type PipelineEvent =
       actions: number;
     }
   | { type: "rendered"; html_chars: number }
+  | { type: "voice_generating" }
+  | {
+      type: "voice_generated";
+      path: string;
+      bytes: number;
+      duration_s: number;
+    }
   | { type: "sending"; to: string }
   | { type: "sent"; resend_id: string; brief_id: string }
   | { type: "dry_run" };
@@ -167,6 +174,27 @@ function EventLine({ event }: { event: PipelineEvent }) {
       return (
         <div className="py-0.5 pl-6 text-[color:var(--color-text-muted)]">
           rendered {event.html_chars.toLocaleString()} chars
+        </div>
+      );
+
+    case "voice_generating":
+      return (
+        <div className="py-0.5 mt-3 text-[color:var(--color-info)]">
+          [voice]{" "}
+          <span className="text-[color:var(--color-text-muted)]">
+            generating audio brief via Gradium…
+          </span>
+        </div>
+      );
+
+    case "voice_generated":
+      return (
+        <div className="py-0.5 pl-6 text-[color:var(--color-text-muted)]">
+          {Math.round(event.bytes / 1024)} KB · ~{event.duration_s.toFixed(1)}s
+          ·{" "}
+          <span className="text-[color:var(--color-text-dim)]">
+            {event.path.replace(/^.+\/data\//, "data/")}
+          </span>
         </div>
       );
 

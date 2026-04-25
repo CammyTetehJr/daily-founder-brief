@@ -7,6 +7,7 @@ import { composeBrief, getRecentSignals } from "./compose";
 import { getDb } from "./db";
 import { sendBrief } from "./email";
 import { FounderBriefEmail } from "./email-templates/FounderBrief";
+import { generateVoiceBrief } from "./gradium";
 
 export type PipelineEvent =
   | AgentEvent
@@ -19,6 +20,13 @@ export type PipelineEvent =
       actions: number;
     }
   | { type: "rendered"; html_chars: number }
+  | { type: "voice_generating" }
+  | {
+      type: "voice_generated";
+      path: string;
+      bytes: number;
+      duration_s: number;
+    }
   | { type: "sending"; to: string }
   | { type: "sent"; resend_id: string; brief_id: string }
   | { type: "dry_run" };
@@ -64,6 +72,24 @@ export async function* runFullPipeline(
   );
   yield { type: "rendered", html_chars: html.length };
 
+  const briefId = randomUUID();
+
+  if (process.env.GRADIUM_API_KEY) {
+    yield { type: "voice_generating" };
+    try {
+      const voice = await generateVoiceBrief({ brief, briefId });
+      yield {
+        type: "voice_generated",
+        path: voice.path,
+        bytes: voice.bytes,
+        duration_s: voice.durationApproxSeconds,
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      yield { type: "error", message: `Gradium voice failed: ${message}` };
+    }
+  }
+
   if (options.dryRun) {
     yield { type: "dry_run" };
     return;
@@ -81,7 +107,6 @@ export async function* runFullPipeline(
     html,
   });
 
-  const briefId = randomUUID();
   getDb()
     .prepare(
       `INSERT INTO briefs
