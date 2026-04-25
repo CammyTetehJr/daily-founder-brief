@@ -12,7 +12,10 @@ Built for Big Berlin Hack 2026.
 - **SQLite** (`better-sqlite3`) for users, competitors, scrapes, signals, briefs
 - **Tavily** for live scrape (`/extract`) and news search (`/search`)
 - **Claude** (Opus 4.7 agent loop, Sonnet 4.6 brief composer) via `@anthropic-ai/sdk`, with the Anthropic MCP connector as the integration surface for sponsor MCPs
-- **Peec AI MCP** (when `PEEC_MCP_TOKEN` is set) for share-of-voice and brand-visibility tracking across AI search engines
+- **Google Gemini** (`@google/genai`, Vertex AI mode) for multimodal `visual_check` — screenshot via Playwright, structured readout of pricing tiers, headlines, banners, named features
+- **Peec AI MCP** (OAuth via `/api/auth/peec/start`) for share-of-voice and brand-visibility tracking across AI search engines
+- **Gradium** for the morning voice brief (60-90s wav saved to `data/audio/`)
+- **Entire** captures every Claude Code session and links it to commits via `Entire-Checkpoint` trailers — agent-human collaboration loop, judges can replay how the project was built at entire.io
 - **React Email + Resend** for the brief itself
 
 ## Setup
@@ -20,10 +23,17 @@ Built for Big Berlin Hack 2026.
 ```bash
 cp .env.example .env.local     # then fill in the keys
 npm install
+npx playwright install chromium # one-time, for visual_check screenshots
 npm run seed                   # creates data/app.db with user + 6 seed competitors
 npm run seed:wayback           # pulls historical baselines from archive.org so today's diffs are non-empty
 npm run dev                    # opens the live agent terminal at http://localhost:3000
 ```
+
+For Gemini: run `gcloud auth application-default login` so Vertex AI can use ADC.
+
+For Peec AI: open the running app, click **connect peec** in the header, complete the OAuth flow, then re-run.
+
+For Entire (session capture, side challenge): `brew tap entireio/tap && brew install --cask entire && entire enable` from this repo. Future commits will carry `Entire-Checkpoint` trailers.
 
 Required env vars:
 
