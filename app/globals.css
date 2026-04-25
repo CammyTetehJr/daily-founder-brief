@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0a0a;
+  --surface: #121212;
+  --border: #232323;
+  --border-strong: #333333;
+  --text: #f5f5f5;
+  --text-muted: #9a9a9a;
+  --text-dim: #6a6a6a;
+  --green: #7bb574;
+  --yellow: #d4a14a;
+  --red: #e06b6b;
+  --cyan: #6aa8d4;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-dim: var(--text-dim);
+  --color-ok: var(--green);
+  --color-warn: var(--yellow);
+  --color-err: var(--red);
+  --color-info: var(--cyan);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-geist-mono), "SF Mono", Menlo, Consolas, monospace;
+  font-variant-ligatures: none;
+}
+
+::selection {
+  background: var(--border-strong);
+  color: var(--text);
+}
+
+.scroll-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}

@@ -1,0 +1,39 @@
+{
+  "name": "daily-founder-brief",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "seed": "tsx --env-file=.env.local scripts/seed.ts",
+    "test:scrape": "tsx --env-file=.env.local scripts/test-scrape.ts",
+    "test:agent": "tsx --env-file=.env.local scripts/test-agent.ts",
+    "test:brief": "tsx --env-file=.env.local scripts/test-brief.ts",
+    "seed:wayback": "tsx --env-file=.env.local scripts/seed-wayback.ts",
+    "verify:diff": "tsx --env-file=.env.local scripts/verify-baseline-diff.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.2.114",
+    "@anthropic-ai/sdk": "^0.90.0",
+    "@react-email/components": "^1.0.12",
+    "@tavily/core": "^0.7.2",
+    "better-sqlite3": "^12.9.0",
+    "diff": "^9.0.0",
+    "next": "16.2.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "resend": "^6.12.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/diff": "^7.0.2",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
+  }
+}
