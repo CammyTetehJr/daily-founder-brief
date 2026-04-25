@@ -234,14 +234,34 @@ function EventLine({ event }: { event: PipelineEvent }) {
   }
 }
 
+type PeecStatus = "unknown" | "connected" | "disconnected";
+
 export default function Home() {
   const [events, setEvents] = useState<PipelineEvent[]>([]);
   const [status, setStatus] = useState<Status>("idle");
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [now, setNow] = useState(Date.now());
   const [dryRun, setDryRun] = useState(false);
+  const [peec, setPeec] = useState<PeecStatus>("unknown");
   const sourceRef = useRef<EventSource | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const refresh = async () => {
+      try {
+        const res = await fetch("/api/auth/peec/status");
+        const data = (await res.json()) as { connected: boolean };
+        if (alive) setPeec(data.connected ? "connected" : "disconnected");
+      } catch {
+        if (alive) setPeec("disconnected");
+      }
+    };
+    refresh();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const elapsed = useMemo(
     () => (startedAt ? now - startedAt : 0),
@@ -359,6 +379,29 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-3">
+          {peec === "connected" ? (
+            <span className="flex items-center gap-1.5 text-[11px] text-[color:var(--color-text-muted)]">
+              <span
+                aria-hidden
+                className="inline-block w-1.5 h-1.5 rounded-full"
+                style={{ background: "var(--color-ok)" }}
+              />
+              peec connected
+            </span>
+          ) : (
+            <a
+              href="/api/auth/peec/start"
+              className="flex items-center gap-1.5 text-[11px] text-[color:var(--color-text-muted)] hover:text-[color:var(--color-text)] transition-colors"
+            >
+              <span
+                aria-hidden
+                className="inline-block w-1.5 h-1.5 rounded-full"
+                style={{ background: "var(--color-text-dim)" }}
+              />
+              connect peec
+            </a>
+          )}
+          <span className="text-[color:var(--color-border-strong)]">|</span>
           <label className="flex items-center gap-2 text-xs text-[color:var(--color-text-muted)] cursor-pointer select-none">
             <input
               type="checkbox"
@@ -444,6 +487,12 @@ export default function Home() {
           <span className="text-[color:var(--color-text-dim)]">gemini</span>
           <span className="text-[color:var(--color-text-dim)]">/</span>
           <span className="text-[color:var(--color-text-dim)]">gradium</span>
+          {peec === "connected" && (
+            <>
+              <span className="text-[color:var(--color-text-dim)]">/</span>
+              <span className="text-[color:var(--color-text-dim)]">peec</span>
+            </>
+          )}
           <span className="text-[color:var(--color-border-strong)] mx-1">|</span>
           <span>toneswap</span>
         </div>

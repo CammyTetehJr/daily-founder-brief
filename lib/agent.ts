@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { getDb, type Competitor } from "./db";
 import { diffLatestTwo } from "./diff";
 import { analyzeScreenshot } from "./gemini";
+import { getAccessToken } from "./oauth/peec";
 import { takeScreenshot } from "./screenshot";
 import { scrapeAndStore, searchNews } from "./tavily";
 
@@ -34,8 +35,10 @@ const PEEC_ALLOWED_TOOLS = [
   "get_actions",
 ];
 
-function peecEnabled() {
-  return Boolean(process.env.PEEC_MCP_TOKEN);
+async function resolvePeecToken(): Promise<string | null> {
+  const oauthToken = await getAccessToken().catch(() => null);
+  if (oauthToken) return oauthToken;
+  return process.env.PEEC_MCP_TOKEN ?? null;
 }
 
 export type AgentEvent =
@@ -204,8 +207,8 @@ Peec AI workflow:
 
 Treat Peec AI as supplementary intelligence, not a replacement for scrape diffs and news.`;
 
-function buildSystemPrompt() {
-  return peecEnabled() ? SYSTEM_PROMPT + PEEC_PROMPT_ADDITION : SYSTEM_PROMPT;
+function buildSystemPrompt(peecEnabled: boolean) {
+  return peecEnabled ? SYSTEM_PROMPT + PEEC_PROMPT_ADDITION : SYSTEM_PROMPT;
 }
 
 type ToolOutcome =
@@ -394,14 +397,15 @@ export async function* runAgent(
     },
   ];
 
-  const usePeec = peecEnabled();
+  const peecToken = await resolvePeecToken();
+  const usePeec = Boolean(peecToken);
   const mcpServers: Anthropic.Beta.BetaRequestMCPServerURLDefinition[] = usePeec
     ? [
         {
           name: "peec",
           type: "url",
           url: PEEC_MCP_URL,
-          authorization_token: process.env.PEEC_MCP_TOKEN!,
+          authorization_token: peecToken!,
         },
       ]
     : [];
@@ -434,7 +438,7 @@ export async function* runAgent(
       const response = await client.beta.messages.create({
         model: MODEL,
         max_tokens: 4096,
-        system: buildSystemPrompt(),
+        system: buildSystemPrompt(usePeec),
         tools: requestTools,
         messages,
         ...(usePeec
