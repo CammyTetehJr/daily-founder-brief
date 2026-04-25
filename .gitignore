@@ -37,6 +37,10 @@ yarn-error.log*
 # local data
 /data/
 
+# Entire CLI local state and Claude Code project config
+/.entire/
+/.claude/
+
 # vercel
 .vercel
 

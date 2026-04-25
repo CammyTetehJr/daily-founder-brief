@@ -2,9 +2,12 @@ import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
-export const PEEC_AUTH_URL = "https://api.peec.ai/authorize";
-export const PEEC_TOKEN_URL = "https://api.peec.ai/token";
-export const PEEC_REGISTER_URL = "https://api.peec.ai/register";
+// Peec AI's OAuth metadata advertises /authorize, /token, /register at the root,
+// but the real endpoints live under /mcp/* (verified by probing - root paths
+// return 404, /mcp/* paths return the expected 401/201 responses).
+export const PEEC_AUTH_URL = "https://api.peec.ai/mcp/authorize";
+export const PEEC_TOKEN_URL = "https://api.peec.ai/mcp/token";
+export const PEEC_REGISTER_URL = "https://api.peec.ai/mcp/register";
 export const PEEC_RESOURCE = "https://api.peec.ai/mcp";
 
 export type PeecClient = {
