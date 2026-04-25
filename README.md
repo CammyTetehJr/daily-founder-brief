@@ -15,7 +15,7 @@ Built for Big Berlin Hack 2026.
 - **Google Gemini** (`@google/genai`, Vertex AI mode) for multimodal `visual_check` — screenshot via Playwright, structured readout of pricing tiers, headlines, banners, named features
 - **Peec AI MCP** (OAuth via `/api/auth/peec/start`) for share-of-voice and brand-visibility tracking across AI search engines
 - **Gradium** for the morning voice brief (60-90s wav saved to `data/audio/`)
-- **Entire** captures every Claude Code session and links it to commits via `Entire-Checkpoint` trailers — agent-human collaboration loop, judges can replay how the project was built at entire.io
+- **Entire** captures every Claude Code session and links each commit to a checkpoint via `Entire-Checkpoint` trailers — agent-human collaboration loop. Push events run `[entire] Pushing entire/checkpoints/v1 to origin` and the captured sessions are replayable at [entire.io](https://entire.io). Run `npm run dispatch` for an AI-generated summary of recent agent work.
 - **React Email + Resend** for the brief itself
 
 ## Setup
@@ -33,7 +33,15 @@ For Gemini: run `gcloud auth application-default login` so Vertex AI can use ADC
 
 For Peec AI: open the running app, click **connect peec** in the header, complete the OAuth flow, then re-run.
 
-For Entire (session capture, side challenge): `brew tap entireio/tap && brew install --cask entire && entire enable` from this repo. Future commits will carry `Entire-Checkpoint` trailers.
+For Entire (session capture, side challenge): `brew tap entireio/tap && brew install --cask entire && entire enable && entire login` from this repo. Future Claude Code sessions are captured automatically; commits carry `Entire-Checkpoint` trailers; `entire activity` shows dashboard data.
+
+## How this was built (via Entire)
+
+This project's Claude Code development sessions are captured by [Entire](https://entire.io). Every commit pushed from this repo includes an `Entire-Checkpoint` trailer that judges and reviewers can resolve back to the originating session, complete with the prompts, tool calls, file edits, and token counts that produced each change.
+
+Run `npm run dispatch` (after `entire login`) to get an AI-generated narrative of the last 24 hours of work in this repo. The same data is browsable at the entire.io dashboard.
+
+Why this matters for the project: this repo *is itself* an "agent-human collaboration" artifact - the Daily Founder Brief was built by a Claude Code agent under human direction, captured frame-by-frame by Entire. The same shape of collaboration loop the product offers founders for competitive intel, Entire offers developers for code.
 
 Required env vars:
 
