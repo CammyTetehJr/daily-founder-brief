@@ -67,24 +67,41 @@ Rules:
 - Never invent signals, numbers, or URLs. Only reference what the input provides.
 - Every non-empty signal_bullet must preserve the receipt from the input unchanged.
 - Keep copy tight. Founder has 30 seconds.
-- Never use em dashes (—) or en dashes (–). Use a hyphen, a comma, a period, or break into two sentences. This is non-negotiable.`;
+- Never use em dashes (—) or en dashes (–). Use a hyphen, a comma, a period, or break into two sentences. This is non-negotiable.
+- Never use emoji or any decorative icons in any field. No 🚨, 📊, ✅, ⚠️, 💡, ⭐, 🔍, 🎯, ✓, ✗, ★ etc. No "AI assistant" cliche markers like brackets such as [URGENT] or [CRITICAL]. Plain text founder-to-founder voice only. This rule supersedes any temptation to add visual emphasis.
+- Subject lines, headlines, and bullet text must read like a real human founder wrote them. No Twitter-thread or marketing-copy energy.`;
 
 function stripDashes(s: string): string {
   return s.replace(/\s*[—–]\s*/g, " - ");
 }
 
+// Strip emoji and decorative icons that the model occasionally inserts despite
+// being explicitly told not to. Range covers: emoji presentation, dingbats,
+// supplemental symbols, regional indicators, variation selectors, and the
+// common geometric/checkmark glyphs we've seen leak through.
+const ICON_RE =
+  /[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{FE0F}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}]/gu;
+
+function stripIcons(s: string): string {
+  return s.replace(ICON_RE, "").replace(/\s{2,}/g, " ").trim();
+}
+
+function clean(s: string): string {
+  return stripIcons(stripDashes(s));
+}
+
 function sanitize(brief: ComposedBrief): ComposedBrief {
   return {
     ...brief,
-    subject_line: stripDashes(brief.subject_line),
-    headline: stripDashes(brief.headline),
-    opening: stripDashes(brief.opening),
-    what_it_means: stripDashes(brief.what_it_means),
+    subject_line: clean(brief.subject_line),
+    headline: clean(brief.headline),
+    opening: clean(brief.opening),
+    what_it_means: clean(brief.what_it_means),
     signal_bullets: brief.signal_bullets.map((b) => ({
       ...b,
-      one_liner: stripDashes(b.one_liner),
+      one_liner: clean(b.one_liner),
     })),
-    actions: brief.actions.map(stripDashes),
+    actions: brief.actions.map(clean),
   };
 }
 

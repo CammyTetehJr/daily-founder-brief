@@ -14,6 +14,13 @@ export type VoiceBriefResult = {
   durationApproxSeconds: number;
 };
 
+// Gradium TTS hard limit is 3000 chars per call. Keep the audio script
+// well under that by capping signal count and length, plus a final
+// guard that truncates at sentence boundary if a long input slips through.
+const VOICE_MAX_CHARS = 2700;
+const VOICE_MAX_SIGNALS = 3;
+const VOICE_MAX_ACTIONS = 3;
+
 export function buildVoiceScript(brief: ComposedBrief): string {
   const lines: string[] = [];
   lines.push("Good morning. Here is your daily founder brief.");
@@ -26,9 +33,16 @@ export function buildVoiceScript(brief: ComposedBrief): string {
   lines.push(brief.opening);
 
   if (brief.signal_bullets.length > 0) {
+    const top = [...brief.signal_bullets]
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, VOICE_MAX_SIGNALS);
     lines.push("");
-    lines.push("Here is what changed.");
-    for (const b of brief.signal_bullets) {
+    lines.push(
+      top.length < brief.signal_bullets.length
+        ? `Top ${top.length} of ${brief.signal_bullets.length} signals.`
+        : "Here is what changed.",
+    );
+    for (const b of top) {
       lines.push(`${b.competitor}, ${b.signal_type}. ${b.one_liner}`);
     }
   }
@@ -38,17 +52,24 @@ export function buildVoiceScript(brief: ComposedBrief): string {
   lines.push(brief.what_it_means);
 
   if (brief.actions.length > 0) {
+    const topActions = brief.actions.slice(0, VOICE_MAX_ACTIONS);
     lines.push("");
     lines.push("Today's actions.");
-    for (let i = 0; i < brief.actions.length; i++) {
-      lines.push(`${i + 1}. ${brief.actions[i]}`);
+    for (let i = 0; i < topActions.length; i++) {
+      lines.push(`${i + 1}. ${topActions[i]}`);
     }
   }
 
   lines.push("");
   lines.push("That is your brief. Have a good morning.");
 
-  return lines.join(" ");
+  let script = lines.join(" ");
+  if (script.length > VOICE_MAX_CHARS) {
+    // Truncate to sentence boundary just below the limit.
+    const cut = script.lastIndexOf(".", VOICE_MAX_CHARS);
+    script = (cut > 0 ? script.slice(0, cut + 1) : script.slice(0, VOICE_MAX_CHARS)).trim();
+  }
+  return script;
 }
 
 export async function generateVoiceBrief(params: {
