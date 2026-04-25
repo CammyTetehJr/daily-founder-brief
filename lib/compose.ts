@@ -123,7 +123,7 @@ export async function composeBrief(params: {
 
   const response = await client.messages.create({
     model: MODEL,
-    max_tokens: 2048,
+    max_tokens: 8192,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],
   });
@@ -133,14 +133,32 @@ export async function composeBrief(params: {
     .join("")
     .trim();
 
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
+  // Strip a wrapping ```json ... ``` fence if the model added one,
+  // then locate the JSON object substring.
+  const unfenced = text
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+  const start = unfenced.indexOf("{");
+  const end = unfenced.lastIndexOf("}");
   if (start < 0 || end < 0) {
     throw new Error(
       `compose: no JSON object found in model response: ${text.slice(0, 300)}`,
     );
   }
 
-  const parsed = JSON.parse(text.slice(start, end + 1)) as ComposedBrief;
+  const jsonText = unfenced.slice(start, end + 1);
+  let parsed: ComposedBrief;
+  try {
+    parsed = JSON.parse(jsonText) as ComposedBrief;
+  } catch (err) {
+    const stopReason = response.stop_reason ?? "unknown";
+    const tokensOut = response.usage?.output_tokens ?? -1;
+    const detail =
+      err instanceof Error ? err.message : String(err);
+    throw new Error(
+      `compose: JSON parse failed (stop_reason=${stopReason}, output_tokens=${tokensOut}): ${detail}. First 300 chars: ${jsonText.slice(0, 300)}`,
+    );
+  }
   return sanitize(parsed);
 }
