@@ -194,21 +194,31 @@ Hard rules:
 - If no real changes were found for a competitor, just move on. Reporting nothing is better than fabricating.
 - Keep summaries one sentence, specific, and actionable.`;
 
-const PEEC_PROMPT_ADDITION = `
+function buildPeecPrompt(projectId: string | null): string {
+  const projectInstruction = projectId
+    ? `\nUse Peec project id "${projectId}" exclusively. Pass this id as the project_id argument to list_brands and get_brand_report. Do not call list_projects to choose another - the active project is fixed.\n`
+    : `\nFirst call list_projects. Find the project whose name is exactly "Big Berlin Hack - Camillus" (note the trailing "- Camillus" - DO NOT pick the unrelated "Big Berlin Hack" project, which tracks solar/renewable energy brands and has no relation to ToneSwap's competitor set). If "Big Berlin Hack - Camillus" is not present, pick a project whose tracked brands include "ToneSwap" or "Grammarly" or "Jasper". Do not pick projects tracking unrelated industries.\n`;
+
+  return `
 
 You also have access to Peec AI MCP tools for tracking how brands appear in AI search engines (ChatGPT, Claude, Perplexity, Gemini). These complement scrape diffs and news searches by adding a third signal type: share-of-voice and visibility shifts in LLM answers.
 
-Peec AI workflow:
-1. Call list_projects to confirm the active project, then list_brands to see which competitors are tracked there.
-2. For each tracked competitor brand, call get_brand_report to retrieve current visibility, sentiment, position, and share of voice across AI search engines.
-3. If a brand's metrics show meaningful change (e.g., share of voice up significantly, sentiment shift, new position trends), record_signal with signal_type "messaging" or "feature" using a source_url that points to the relevant Peec AI dashboard or report. Treat the Peec data itself as the receipt.
-4. Skip Peec AI for any competitor not present in list_brands (do not invent brand IDs).
-5. Use get_actions only if a competitor's brand report surfaces opportunities that translate into a founder action.
+Peec AI workflow - mandatory, not optional:
+${projectInstruction}
+STEP 0 (run BEFORE any per-competitor work): Call list_brands for the active project. Do not skip. Do not infer which brands are tracked from prior context - actually call the tool. Its output tells you which competitors have Peec data available for this run.
 
-Treat Peec AI as supplementary intelligence, not a replacement for scrape diffs and news.`;
+After step 0, when you investigate each competitor:
+- If the competitor's name appears in list_brands output: call get_brand_report for that brand. If the report surfaces a meaningful change (share of voice shift, sentiment swing, new position trend), record_signal with signal_type "messaging" using the brand_report URL or scrape_id of any related scrape as the receipt.
+- If the competitor is NOT in list_brands: do not invent a brand id; skip Peec for that competitor and rely on scrape + news.
+- get_actions is optional - call it only if a brand_report surfaces a clear opportunity that translates to a founder action.
+
+Treat Peec AI as supplementary intelligence on top of scrape + news, not a replacement.`;
+}
 
 function buildSystemPrompt(peecEnabled: boolean) {
-  return peecEnabled ? SYSTEM_PROMPT + PEEC_PROMPT_ADDITION : SYSTEM_PROMPT;
+  if (!peecEnabled) return SYSTEM_PROMPT;
+  const projectId = process.env.PEEC_PROJECT_ID ?? null;
+  return SYSTEM_PROMPT + buildPeecPrompt(projectId);
 }
 
 type ToolOutcome =
