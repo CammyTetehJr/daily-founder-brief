@@ -55,6 +55,13 @@ function truncate(s: string, n: number) {
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
 
+const ICON_RE =
+  /[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{2300}-\u{23FF}\u{FE0F}\u{2B00}-\u{2BFF}\u{2190}-\u{21FF}\u{2700}-\u{27BF}\u{1F900}-\u{1F9FF}]/gu;
+
+function stripIcons(s: string): string {
+  return s.replace(ICON_RE, "").replace(/[ \t]{2,}/g, " ");
+}
+
 function formatElapsed(ms: number) {
   const s = Math.floor(ms / 1000);
   const m = Math.floor(s / 60);
@@ -75,7 +82,7 @@ function EventLine({ event }: { event: PipelineEvent }) {
     case "thinking":
       return (
         <div className="py-0.5 text-[color:var(--color-text-muted)] whitespace-pre-wrap">
-          {event.text}
+          {stripIcons(event.text)}
         </div>
       );
 

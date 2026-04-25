@@ -198,7 +198,8 @@ Method:
 Hard rules:
 - Every signal must cite a scrape_id or source_url. No signals without receipts.
 - If no real changes were found for a competitor, just move on. Reporting nothing is better than fabricating.
-- Keep summaries one sentence, specific, and actionable.`;
+- Keep summaries one sentence, specific, and actionable.
+- Never use emoji or decorative icons in your reasoning, summaries, or any output. No 🚨 📊 ✅ ⚠️ 💡 🔍 🎯 ✓ ✗ ⭐ 🆕 🔴 🟢 💰 ⚔️ 📡 etc. Plain prose only. This applies to your thinking, your section headers, your signal summaries, and everything else you write. Markdown headers like "## Findings" are fine; "## 🚨 Findings" is not.`;
 
 function buildPeecPrompt(projectId: string | null): string {
   const today = TODAY();

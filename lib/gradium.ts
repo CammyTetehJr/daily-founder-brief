@@ -101,7 +101,19 @@ export async function generateVoiceBrief(params: {
     throw new Error(`Gradium TTS ${res.status}: ${body.slice(0, 200)}`);
   }
 
+  const contentType = res.headers.get("content-type") ?? "";
   const audioBuffer = Buffer.from(await res.arrayBuffer());
+
+  if (audioBuffer.length === 0) {
+    throw new Error(
+      `Gradium TTS returned empty body (status ${res.status}, content-type ${contentType}). Script length was ${text.length} chars.`,
+    );
+  }
+  if (contentType.includes("application/json")) {
+    throw new Error(
+      `Gradium TTS returned JSON instead of audio: ${audioBuffer.toString("utf8").slice(0, 300)}`,
+    );
+  }
 
   const safeBriefId = safePathSegment(params.briefId, "briefId");
   const dir = resolve(process.cwd(), "data", "audio");
