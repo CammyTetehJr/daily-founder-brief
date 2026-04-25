@@ -40,6 +40,16 @@ async function main() {
           `  ${event.ok ? GREEN + "ok" : RED + "fail"}${RESET}  ${event.summary}`,
         );
         break;
+      case "mcp_tool_call":
+        console.log(
+          `${CYAN}» ${event.server}.${event.name}${RESET} ${GRAY}${JSON.stringify(event.input).slice(0, 200)}${RESET}`,
+        );
+        break;
+      case "mcp_tool_result":
+        console.log(
+          `  ${event.ok ? GREEN + "ok" : RED + "fail"}${RESET}  ${event.summary.slice(0, 240)}`,
+        );
+        break;
       case "signal_recorded":
         console.log(
           `${GREEN}[signal]${RESET} ${event.competitor} / ${event.signal_type} (${event.confidence.toFixed(2)}): ${event.summary}`,

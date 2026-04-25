@@ -173,7 +173,11 @@ const tools: Anthropic.Tool[] = [
   },
 ];
 
+const TODAY = () => new Date().toISOString().slice(0, 10);
+
 const SYSTEM_PROMPT = `You are an overnight competitive intelligence analyst working for the founder of ToneSwap, an AI writing/tone product.
+
+Today's date is ${TODAY()}. Use this as your reference for "now" - any date-range parameter you pass to a tool (Peec brand reports, news searches, etc.) must end on or near this date. Do not use dates from your training data; today is ${TODAY()}.
 
 Your job: investigate tracked competitors and record any meaningful changes since the last run. Focus on signals a founder would actually care about:
 - Pricing changes (new tiers, price shifts)
@@ -195,6 +199,7 @@ Hard rules:
 - Keep summaries one sentence, specific, and actionable.`;
 
 function buildPeecPrompt(projectId: string | null): string {
+  const today = TODAY();
   const projectInstruction = projectId
     ? `\nUse Peec project id "${projectId}" exclusively. Pass this id as the project_id argument to list_brands and get_brand_report. Do not call list_projects to choose another - the active project is fixed.\n`
     : `\nFirst call list_projects. Find the project whose name is exactly "Big Berlin Hack - Camillus" (note the trailing "- Camillus" - DO NOT pick the unrelated "Big Berlin Hack" project, which tracks solar/renewable energy brands and has no relation to ToneSwap's competitor set). If "Big Berlin Hack - Camillus" is not present, pick a project whose tracked brands include "ToneSwap" or "Grammarly" or "Jasper". Do not pick projects tracking unrelated industries.\n`;
@@ -208,7 +213,13 @@ ${projectInstruction}
 STEP 0 (run BEFORE any per-competitor work): Call list_brands for the active project. Do not skip. Do not infer which brands are tracked from prior context - actually call the tool. Its output tells you which competitors have Peec data available for this run.
 
 After step 0, when you investigate each competitor:
-- If the competitor's name appears in list_brands output: call get_brand_report for that brand. If the report surfaces a meaningful change (share of voice shift, sentiment swing, new position trend), record_signal with signal_type "messaging" using the brand_report URL or scrape_id of any related scrape as the receipt.
+- If the competitor's name appears in list_brands output: call get_brand_report for that brand. Use a recent date window: end_date should be today (${today}) and start_date should be 7-14 days before that. Do not pass dates from 2024 or 2025 unless explicitly asked for historical analysis - Peec data is collected daily and the freshest data is the most signal-worthy.
+- When you receive brand report data, record a signal whenever any of the following is true:
+  - Share-of-voice shifted by 5 percentage points or more vs the prior period.
+  - Sentiment moved by 5 points or more.
+  - Average position changed by 0.5 or more.
+  - The brand's current visibility is notably high (>= 25%) or notably low (<= 5%) compared to the founder's brand (ToneSwap) - even on a single-day baseline, the share-of-voice gap itself is signal-worthy. Example: "Grammarly leads LLM visibility at 35% vs ToneSwap at 2% - distribution gap is the moat to attack."
+  - For these signals: signal_type should be "messaging", confidence 0.6-0.85 depending on data freshness (lower if only 1 day of data), and the receipt should be the Peec brand report itself - cite the project_id and brand_id in the source_url field as a peec://-style identifier.
 - If the competitor is NOT in list_brands: do not invent a brand id; skip Peec for that competitor and rely on scrape + news.
 - get_actions is optional - call it only if a brand_report surfaces a clear opportunity that translates to a founder action.
 
