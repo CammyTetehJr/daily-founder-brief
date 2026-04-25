@@ -9,6 +9,7 @@ import { composeBrief, getRecentSignals } from "../lib/compose";
 import { getDb } from "../lib/db";
 import { sendBrief } from "../lib/email";
 import { FounderBriefEmail } from "../lib/email-templates/FounderBrief";
+import { generateVoiceBrief } from "../lib/gradium";
 
 const GRAY = "\x1b[90m";
 const CYAN = "\x1b[36m";
@@ -98,6 +99,23 @@ async function main() {
   writeFileSync(previewPath, html);
   console.log(`${CYAN}[preview]${RESET} ${previewPath}`);
 
+  const briefId = randomUUID();
+
+  if (process.env.GRADIUM_API_KEY) {
+    console.log(`${CYAN}[voice]${RESET} generating audio brief via Gradium...`);
+    try {
+      const voice = await generateVoiceBrief({ brief, briefId });
+      console.log(
+        `  ${Math.round(voice.bytes / 1024)} KB · ~${voice.durationApproxSeconds.toFixed(1)}s · ${voice.path}`,
+      );
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.log(`  ${RED}voice failed${RESET}: ${message}`);
+    }
+  } else {
+    console.log(`${GRAY}[voice]${RESET} skipped (no GRADIUM_API_KEY)`);
+  }
+
   if (dryRun) {
     console.log(`${YELLOW}[dry-run]${RESET} not sending. open the preview file in a browser.`);
     return;
@@ -111,7 +129,6 @@ async function main() {
   });
   console.log(`  resend id: ${sent.id}`);
 
-  const briefId = randomUUID();
   getDb()
     .prepare(
       `INSERT INTO briefs

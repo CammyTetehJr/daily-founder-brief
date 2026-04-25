@@ -20,17 +20,31 @@ export type VoiceBriefResult = {
 const VOICE_MAX_CHARS = 2700;
 const VOICE_MAX_SIGNALS = 3;
 const VOICE_MAX_ACTIONS = 3;
+// A real WAV file for ~60s of speech is ~5MB. A response that's just
+// the 44-byte header (or close to it) means Gradium failed to generate
+// audio even if it returned a 200 status with audio/wav content-type.
+const VOICE_MIN_BYTES = 4096;
+
+function stripForTts(s: string): string {
+  return s
+    .replace(/\bhttps?:\/\/\S+/gi, "")
+    .replace(/\bpeec:\/\/\S+/gi, "")
+    .replace(/\bdata\/[A-Za-z0-9_/.\-]+/g, "")
+    .replace(/`[^`]*`/g, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
 
 export function buildVoiceScript(brief: ComposedBrief): string {
   const lines: string[] = [];
   lines.push("Good morning. Here is your daily founder brief.");
   lines.push("");
-  lines.push(brief.headline + ".");
+  lines.push(stripForTts(brief.headline) + ".");
   lines.push(
     `Threat level ${brief.threat_level} out of ten. ${brief.signal_bullets.length} signal${brief.signal_bullets.length === 1 ? "" : "s"} today.`,
   );
   lines.push("");
-  lines.push(brief.opening);
+  lines.push(stripForTts(brief.opening));
 
   if (brief.signal_bullets.length > 0) {
     const top = [...brief.signal_bullets]
@@ -43,29 +57,30 @@ export function buildVoiceScript(brief: ComposedBrief): string {
         : "Here is what changed.",
     );
     for (const b of top) {
-      lines.push(`${b.competitor}, ${b.signal_type}. ${b.one_liner}`);
+      lines.push(
+        `${stripForTts(b.competitor)}, ${stripForTts(b.signal_type)}. ${stripForTts(b.one_liner)}`,
+      );
     }
   }
 
   lines.push("");
   lines.push("What this means.");
-  lines.push(brief.what_it_means);
+  lines.push(stripForTts(brief.what_it_means));
 
   if (brief.actions.length > 0) {
     const topActions = brief.actions.slice(0, VOICE_MAX_ACTIONS);
     lines.push("");
     lines.push("Today's actions.");
     for (let i = 0; i < topActions.length; i++) {
-      lines.push(`${i + 1}. ${topActions[i]}`);
+      lines.push(`${i + 1}. ${stripForTts(topActions[i])}`);
     }
   }
 
   lines.push("");
   lines.push("That is your brief. Have a good morning.");
 
-  let script = lines.join(" ");
+  let script = lines.join(" ").replace(/\s{2,}/g, " ").trim();
   if (script.length > VOICE_MAX_CHARS) {
-    // Truncate to sentence boundary just below the limit.
     const cut = script.lastIndexOf(".", VOICE_MAX_CHARS);
     script = (cut > 0 ? script.slice(0, cut + 1) : script.slice(0, VOICE_MAX_CHARS)).trim();
   }
@@ -112,6 +127,14 @@ export async function generateVoiceBrief(params: {
   if (contentType.includes("application/json")) {
     throw new Error(
       `Gradium TTS returned JSON instead of audio: ${audioBuffer.toString("utf8").slice(0, 300)}`,
+    );
+  }
+  if (audioBuffer.length < VOICE_MIN_BYTES) {
+    // 44-byte WAV-header-only responses are common when Gradium fails
+    // to synthesize - usually because the input contained URLs, code
+    // blocks, or other unspoken content.
+    throw new Error(
+      `Gradium TTS returned only ${audioBuffer.length} bytes (likely a WAV header without audio data). Script length was ${text.length} chars. First 200 chars: ${text.slice(0, 200)}`,
     );
   }
 
