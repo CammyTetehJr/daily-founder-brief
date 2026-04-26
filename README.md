@@ -149,7 +149,25 @@ npm run test:brief           # full pipeline: agent + compose + voice + send
                              # flags: -- --dry-run --skip-agent --scope=<name>
 npm run verify:diff <name> <source_type>  # scrape one URL and diff vs baseline
 npm run dispatch             # entire dispatch summary of last 24h of dev work
+npm test                     # run the unit test suite (vitest)
+npm run test:watch           # vitest in watch mode
 ```
+
+## Tests
+
+Unit tests cover the pure functions where bugs would be either security-relevant or silently corrupt the agent's output.
+
+| File | What it covers |
+|---|---|
+| `lib/path-safety.test.ts` | The allowlist validator that gates filesystem writes (defends against the path-traversal Aikido finding). 12 tests. |
+| `lib/oauth/peec.test.ts` | PKCE code-verifier/challenge generation, state randomness, OAuth authorize URL shape. 11 tests. |
+| `lib/gradium.test.ts` | Voice script construction: headline/threat-level/opening composition, signal cap, action cap, URL stripping, hard 1500-char limit. 8 tests. |
+
+```bash
+npm test
+```
+
+Side-effecting modules (Tavily extract, Gemini, Resend, Playwright, the agent loop) are intentionally not unit-tested at this layer; they're verified end-to-end via the CLI smoke scripts (`npm run test:scrape`, `test:visual`, `test:voice`, `test:agent`, `test:brief`).
 
 ## Repo layout
 
