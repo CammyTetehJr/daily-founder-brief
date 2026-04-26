@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 
 // Peec AI's OAuth metadata advertises /authorize, /token, /register at the root,
@@ -81,6 +81,12 @@ export function loadToken(): PeecToken | null {
 export function saveToken(token: PeecToken) {
   ensureDataDir();
   writeFileSync(TOKEN_FILE, JSON.stringify(token, null, 2));
+}
+
+export function clearToken(): boolean {
+  if (!existsSync(TOKEN_FILE)) return false;
+  unlinkSync(TOKEN_FILE);
+  return true;
 }
 
 export function buildAuthUrl(params: {

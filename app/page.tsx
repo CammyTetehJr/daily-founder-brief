@@ -405,6 +405,21 @@ export default function Home() {
                 style={{ background: "var(--color-ok)" }}
               />
               peec connected
+              <button
+                type="button"
+                onClick={async () => {
+                  await fetch("/api/auth/peec/disconnect", { method: "POST" }).catch(
+                    () => {},
+                  );
+                  setPeec("disconnected");
+                }}
+                disabled={status === "running"}
+                className="ml-1 text-[color:var(--color-text-dim)] hover:text-[color:var(--color-err)] transition-colors disabled:opacity-50"
+                aria-label="disconnect peec"
+                title="disconnect peec"
+              >
+                ×
+              </button>
             </span>
           ) : (
             <a
