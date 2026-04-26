@@ -9,19 +9,18 @@ export type ScrapeDiff = {
   changed: boolean;
 };
 
-export function diffLatestTwo(params: {
-  competitorId: string;
-  sourceType: SourceType;
-}): ScrapeDiff | null {
-  const rows = getDb()
-    .prepare(
-      `SELECT * FROM scrapes
-       WHERE competitor_id = ? AND source_type = ?
-       ORDER BY extracted_at DESC
-       LIMIT 2`,
-    )
-    .all(params.competitorId, params.sourceType) as Scrape[];
-
+/**
+ * Pure-function diff of two scrapes.
+ *
+ * Caller is responsible for fetching and ordering the scrapes; this function
+ * just compares them. `rows` is expected in DESC-by-extracted_at order
+ * (newest first), matching how `diffLatestTwo` queries the DB.
+ *
+ * Returns null if fewer than 2 scrapes are provided. If the two scrapes have
+ * the same content_hash, returns a diff with `changed: false` and empty
+ * line arrays. Otherwise computes the line-level diff.
+ */
+export function diffScrapes(rows: Scrape[]): ScrapeDiff | null {
   if (rows.length < 2) return null;
 
   const [after, before] = rows;
@@ -41,4 +40,20 @@ export function diffLatestTwo(params: {
   }
 
   return { before, after, addedLines, removedLines, changed: true };
+}
+
+export function diffLatestTwo(params: {
+  competitorId: string;
+  sourceType: SourceType;
+}): ScrapeDiff | null {
+  const rows = getDb()
+    .prepare(
+      `SELECT * FROM scrapes
+       WHERE competitor_id = ? AND source_type = ?
+       ORDER BY extracted_at DESC
+       LIMIT 2`,
+    )
+    .all(params.competitorId, params.sourceType) as Scrape[];
+
+  return diffScrapes(rows);
 }

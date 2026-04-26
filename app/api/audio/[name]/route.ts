@@ -1,9 +1,9 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-export const dynamic = "force-dynamic";
+import { isValidAudioFilename } from "@/lib/audio-filename";
 
-const FILENAME_RE = /^[A-Za-z0-9_.-]+\.wav$/;
+export const dynamic = "force-dynamic";
 
 export async function GET(
   _req: Request,
@@ -11,7 +11,7 @@ export async function GET(
 ) {
   const { name } = await params;
 
-  if (!FILENAME_RE.test(name)) {
+  if (!isValidAudioFilename(name)) {
     return new Response("invalid filename", { status: 400 });
   }
 

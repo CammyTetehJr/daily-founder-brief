@@ -160,7 +160,9 @@ Unit tests cover the pure functions where bugs would be either security-relevant
 | File | What it covers |
 |---|---|
 | `lib/path-safety.test.ts` | The allowlist validator that gates filesystem writes (defends against the path-traversal Aikido finding). 12 tests. |
+| `lib/audio-filename.test.ts` | Filename validator that gates `/api/audio/[name]` reads. Path-traversal, slash, leading-dot, non-wav extension, control char, shell-meta, length-cap, double-extension rejection. 15 tests. |
 | `lib/oauth/peec.test.ts` | PKCE code-verifier/challenge generation, state randomness, OAuth authorize URL shape. 11 tests. |
+| `lib/diff.test.ts` | Pure scrape-diff logic: short-input handling, identical-hash short-circuit, DESC ordering contract, empty-line filter, full-replacement, before/after object preservation. 8 tests. |
 | `lib/gradium.test.ts` | Voice script construction: headline/threat-level/opening composition, signal cap, action cap, URL stripping, hard 1500-char limit. 8 tests. |
 
 ```bash
