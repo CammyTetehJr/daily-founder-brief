@@ -44,6 +44,9 @@ yarn-error.log*
 # Auto-generated dispatch log (regenerate locally with `npm run dispatch`)
 /docs/build-log.md
 
+# Submission prep notes (kept local, not pushed)
+/docs/submission/
+
 # vercel
 .vercel
 
